@@ -1,6 +1,6 @@
 ---
 title: "633_Final"
-author: "Ben Goldberg"
+author: "Ben Goldberg, Ian Knight"
 date: "`r Sys.Date()`"
 output: html_document
 ---

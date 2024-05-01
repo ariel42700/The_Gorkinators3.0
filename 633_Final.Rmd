@@ -1,11 +1,127 @@
 ---
 title: "633_Final"
-author: "Ben Goldberg, Ian Knight"
+author: "Ben Goldberg, Ian Knightly"
 date: "`r Sys.Date()`"
 output: html_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+library(readr)
+library(dplyr)
+library(visdat)
+
 ```
+
+## Source:
+
+<https://www.kaggle.com/datasets/teamincribo/cyber-security-attacks>
+
+## Possible Research Questions to Consider
+
+---
+
+- Attack Patterns: What are the common patterns observed in different types of cybersecurity attacks? Can these patterns be used to predict future attacks?
+
+- Anomaly Detection: Can machine learning models accurately detect anomalies or unusual patterns that might indicate a cybersecurity attack?
+
+- Attack Origins: Are there specific geographical regions or IP addresses that are more frequently associated with attacks?
+
+- Temporal Patterns: Do attacks occur more frequently at certain times (e.g., specific hours of the day, days of the week, or months of the year)?
+
+- Attack Types: What are the most common types of attacks? How do their frequencies and impacts vary2?
+Preventive Measures: Based on the data, what preventive measures could be most effective in mitigating the risk of these attacks?
+
+- Feature Importance: Which features in the dataset are most indicative of a cybersecurity attack2?
+Model Performance: How well do different machine learning models perform in predicting cybersecurity attacks based on this dataset?
+
+- False Positives and Negatives: How can the rates of false positives (normal activity incorrectly flagged as an attack) and false negatives (attacks missed by the system) be minimized?
+
+- Real-time Detection: Can a real-time system be developed to detect malicious activities using machine learning techniques2?
+
+---
+
+## Data Preprocessing
+
+```{r, echo=FALSE}
+# data<-read_csv("cybersecurity_attacks.csv")
+# #View(data)
+# 
+# # #Assuming 'df' is your dataframe
+# missing_values <- apply(data, 2, function(x) sum(is.na(x)))
+# sorted_columns <- names(missing_values)[order(missing_values, decreasing = TRUE)]
+# data_sorted <- data[, sorted_columns]
+# View(data_sorted)
+# na_count<-colSums(is.na(data))
+# print(na_count)
+# dim(data)
+# 
+# AlertsWarnings<-table(data_sorted$`Alerts/Warnings`)
+# AlertsWarnings<-as.data.frame(AlertsWarnings)
+# names(AlertsWarnings)<-c("Alerts/Warnings", "Count")
+# AlertsWarnings%>%arrange(desc(Count))
+# 
+# IDS_IPS_Alerts<-table(data_sorted$`IDS/IPS Alerts`)
+# IDS_IPS_Alerts<-as.data.frame(IDS_IPS_Alerts)
+# names(IDS_IPS_Alerts)<-c("IDS/IPS Alerts", "Count")
+# IDS_IPS_Alerts%>%arrange(desc(Count))
+# 
+# MalwareIndicators<-table(data_sorted$`Malware Indicators`)
+# MalwareIndicators<-as.data.frame(MalwareIndicators)
+# names(MalwareIndicators)<-c("Malware Indicators", "Count")
+# MalwareIndicators%>%arrange(desc(Count))
+# 
+# Firewall_Logs<-table(data_sorted$`Firewall Logs`)
+# Firewall_Logs<-as.data.frame(Firewall_Logs)
+# names(Firewall_Logs)<-c("Firewall Logs", "Count")
+# Firewall_Logs%>%arrange(desc(Count))
+# 
+# ProxyInfo<-table(data_sorted$`Proxy Information`)
+# ProxyInfo<-as.data.frame(ProxyInfo)
+# names(ProxyInfo)<-c("Proxy Information", "Count")
+# ProxyInfo%>%arrange(desc(Count))
+# 
+# data_sorted<-data_sorted%>%rename(`Malware IoC Detected` = `Malware Indicators`, `Alert Triggered` = `Alerts/Warnings`)%>%mutate(`Malware IoC Detected` = ifelse(is.na(`Malware IoC Detected`), 0, 1), `Alert Triggered` = ifelse(is.na(`Alert Triggered`), 0, 1), `Firewall Logs` = ifelse(is.na(`Firewall Logs`), "Firewall Logs", "Firewall Logs"), `IDS/IPS Alerts` = ifelse(is.na(`IDS/IPS Alerts`), "Alert Data", "Alert Data"))%>% arrange(desc(Timestamp))%>%group_by(Timestamp)%>%select(Timestamp, `Firewall Logs`, `IDS/IPS Alerts`,  everything(), -`Payload Data`)
+# 
+# 
+# write.csv(data_sorted, "data.csv")
+
+```
+
+## Read in cleaned data
+
+```{r}
+data<-read_csv("data.csv", show_col_types = FALSE)%>%select(-1)
+
+#View(data)
+```
+
+## IP2Location
+
+---
+
+- <https://lite.ip2location.com/#ipl-blog>
+- <https://blog.ip2location.com/knowledge-base/how-to-use-ip2location-in-r-language-2/>
+- <https://www.jessesadler.com/post/geocoding-with-r/>
+- <https://dylan-hudson.medium.com/graphing-ip-geolocation-data-in-r-2021-adb0166b6162>
+- <https://stackoverflow.com/questions/45674764/geocode-ip-addresses-in-r>
+- <https://www.rdocumentation.org/packages/rgeolocate/versions/1.3.1/topics/maxmind>
+
+---
+
+```{r}
+
+suppressMessages(library(ip2location))
+
+ip2location::open("IP2LOCATION-LITE-DB11.BIN")
+
+source_to_dest<-c("22.36.249.229", "169.96.251.75")
+
+ip2location::plot_map(source_to_dest)
+```
+
+
+
+
+
 

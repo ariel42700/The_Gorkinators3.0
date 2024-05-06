@@ -19,7 +19,7 @@ rm(Housing)
 dat <- df %>%
   mutate( super_rich = case_when(
     price <= quantile(price, probs = c(0.75)) + 1.5*iqr(price) ~ "Regular",
-    TRUE ~ "Super Rich"))
+    TRUE ~ "Super Rich")) %>% filter(price <= 4000000)
 
 dat_filt <- dat %>% mutate(bedrooms_filt = case_when(
   bedrooms >=7 ~ "7+",
@@ -36,30 +36,63 @@ dat %>% ggplot(aes(sample = price)) + geom_qq() +
 
 dat %>% ggplot(aes(y = price)) + geom_boxplot() +
   facet_wrap(vars(super_rich), scales = 'free')
+#Setup
+all_vars <- dat %>% dplyr::select(-c(id,date,price))
+model_dat <- data.frame(scale(model.matrix(super_rich ~ .,
+                                           data = all_vars)[,-1]))
+model_dat$super_rich <- as.factor(all_vars$super_rich)
+model_dat$price <- dat$price
 #Super Rich RF
-dat_vars_rich <- dat %>% filter(super_rich == "Super Rich") %>%
-  dplyr::select(-c(id,date, super_rich))
-model_dat <- scale(model.matrix(price ~ ., data = dat_vars_rich)[,-1])
-model_price <- as.matrix(dat_vars_rich$price)
-lm_dat_rich <- lm(as.vector(model_price) ~ model_dat)
-rf_dat_rich <- randomForest(x = model_dat, y = as.vector(model_price),
+dat_vars_rich <- model_dat %>% filter(super_rich == "Super Rich") %>%
+  dplyr::select(-c(super_rich))
+rf_dat_rich <- randomForest(price ~ ., data = dat_vars_rich,
                             ntree = 100)
 var_imp_rf_rich <- as.data.frame(rf_dat_rich$importance) %>% 
-  rownames_to_column("var_name") %>% mutate(var_name = str_to_title(var_name))
+  rownames_to_column("var_name") %>%
+  mutate(var_name = str_to_title(var_name)) %>%
+  arrange(desc(IncNodePurity)) %>%
+  mutate(rank = rank(-IncNodePurity))
 #Regular RF
-dat_vars_reg <- dat %>% filter(super_rich != "Super Rich") %>%
-  dplyr::select(-c(id,date, super_rich))
-model_dat <- scale(model.matrix(price ~ ., data = dat_vars_reg)[,-1])
-model_price <- as.matrix(dat_vars_reg$price)
-lm_dat <- lm(as.vector(model_price) ~ model_dat)
-rf_dat <- randomForest(x = model_dat, y = as.vector(model_price), ntree = 100)
+dat_vars_reg <- model_dat %>% filter(super_rich != "Super Rich") %>%
+  dplyr::select(-c(super_rich))
+rf_dat <- randomForest(price ~ ., data = dat_vars_reg, ntree = 100)
 var_imp_rf <- as.data.frame(rf_dat$importance) %>% 
-  rownames_to_column("var_name") %>% mutate(var_name = str_to_title(var_name))
+  rownames_to_column("var_name") %>%
+  mutate(var_name = str_to_title(var_name)) %>%
+  arrange(desc(IncNodePurity)) %>%
+  mutate(rank = rank(-IncNodePurity))
 #Make Plots
+#Differnece Plot
+wait <- full_join(var_imp_rf,var_imp_rf_rich, by = "var_name") %>%
+  rename(inc_reg = IncNodePurity.x, inc_rich = IncNodePurity.y,
+         rank_reg = rank.x, rank_rich = rank.y) %>%
+  mutate(diff = rank_reg - rank_rich, rich_bigger = case_when(
+    diff > 0 ~ "Super Rich",
+    diff == 0 ~ "Neither",
+    TRUE ~ "Regular People"
+  ))
+p <- wait %>% dplyr::arrange(desc(diff)) %>%
+  ggplot(aes(x = diff,
+      y = fct_reorder(var_name, diff))) +
+  geom_segment(aes(yend = var_name), xend = 0,
+               colour = "black", linewidth = 1) +
+  geom_point(aes(color = rich_bigger,fill = rich_bigger,
+  text = paste("The differnce is",diff,"for variable",var_name)),
+                 size = 3, shape = 21) +
+labs(x =
+"Difference in Variable Rank For Increase Node Purity(Regular - Rich)",
+       y = "Variable", color = "More Important Group",
+       fill = "More Important Group") +
+  theme_bw() +
+  theme(axis.text.x = element_text(color = 'black', size = 10),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank())
+ggplotly(p, tooltip = "text")
+#Alt rf
 sr <- var_imp_rf_rich %>% dplyr::arrange(desc(IncNodePurity)) %>%
   ggplot(aes(x = IncNodePurity,
              y = fct_reorder(var_name, IncNodePurity))) +
-geom_segment(aes(yend = var_name), xend = 0, colour = "black", linewidth = 1) +
+  geom_segment(aes(yend = var_name), xend = 0, colour = "black", linewidth = 1) +
   geom_point(size = 3, color = "red", shape = 21, fill = 'red') +
   labs(x = "Increase Node Purity", y = "Variable") +
   theme_bw() +
@@ -70,22 +103,19 @@ geom_segment(aes(yend = var_name), xend = 0, colour = "black", linewidth = 1) +
 rg <- var_imp_rf %>% dplyr::arrange(desc(IncNodePurity)) %>%
   ggplot(aes(x = IncNodePurity,
              y = fct_reorder(var_name, IncNodePurity))) +
-geom_segment(aes(yend = var_name), xend = 0, colour = "black", linewidth = 1) +
+  geom_segment(aes(yend = var_name), xend = 0, colour = "black", linewidth = 1) +
   geom_point(size = 3, color = "red", shape = 21, fill = 'red') +
   labs(x = "Increase Node Purity", y = "Variable") +
   theme_bw() +
   theme(axis.text.x = element_text(color = 'black', size = 10),
         panel.grid.major.y = element_blank(),
         panel.grid.minor.y = element_blank())
-
-subplot(ggplotly(sr),ggplotly(rg), margin = 0.08) %>%
+subplot(ggplotly(sr),ggplotly(rg), margin = 0.08, titleX = TRUE) %>%
   layout(annotations = list(
-list(x = 0.1 , y = 1.06, text = "Super Rich People", showarrow = FALSE,
-     xref='paper', yref='paper'),
-list(x = 0.9 , y = 1.06, text = "Regular People", showarrow = FALSE,
-     xref='paper', yref='paper')))
-
-
+    list(x = 0.1 , y = 1.06, text = "Super Rich People", showarrow = FALSE,
+         xref='paper', yref='paper'),
+    list(x = 0.9 , y = 1.06, text = "Regular People", showarrow = FALSE,
+         xref='paper', yref='paper')))
 
 dat %>% ggplot(aes(x = sqft_above, y = price)) +
   geom_smooth(method = 'gam') + scale_y_continuous(labels = comma)  +
